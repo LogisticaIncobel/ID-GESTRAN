@@ -2,33 +2,63 @@
 <html lang="pt-br">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Abrir Gestran Checklist</title>
+<title>Abrir Gestran Checklist 2.0</title>
 <script>
 (function () {
   var ua = navigator.userAgent || "";
   var isAndroid = /Android/i.test(ua);
   var isIOS = /iPhone|iPad|iPod/i.test(ua);
 
-  // Links oficiais das stores:
-  var playStore = "https://play.google.com/store/apps/details?id=com.unilabs.gestran";
-  var appStore  = "https://apps.apple.com/br/app/gestran-checklist/id1642497501";
+  // Lojas oficiais
+  var PLAY = "https://play.google.com/store/apps/details?id=com.unilabs.gestran";
+  var APPSTORE = "https://apps.apple.com/br/app/gestran-checklist/id1642497501";
+
+  // (Se o fornecedor te der um scheme iOS, coloca aqui; ex.: "gestran://open")
+  var IOS_SCHEME = ""; // <-- preenche se existir
+
+  // Util: detecta se a página foi para background (app abriu)
+  var wentBackground = false;
+  var onHide = function () { wentBackground = true; };
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) onHide();
+  });
+  window.addEventListener("pagehide", onHide);
+
+  function fallback(url) {
+    if (!wentBackground) window.location.href = url;
+  }
 
   if (isAndroid) {
-    // Tenta abrir o app pelo package; se não existir, cai na Play Store
-    var intent = "intent://#Intent;package=com.unilabs.gestran;S.browser_fallback_url=" +
-                 encodeURIComponent(playStore) + ";end";
-    window.location.replace(intent);
+    // Tenta abrir o app via intent://; se não abrir em ~1200ms, vai pra Play Store
+    var intent = "intent://#Intent;package=com.unilabs.gestran;S.browser_fallback_url="
+                 + encodeURIComponent(PLAY) + ";end";
+
+    // Alguns WebViews reagem melhor ao href do que ao replace
+    window.location.href = intent;
+
+    // Fallback com timeout (somente se não tiver ido para background)
+    setTimeout(function(){ fallback(PLAY); }, 1200);
   } else if (isIOS) {
-    // Sem Universal Link/URL scheme oficial não dá para abrir o app direto via WebView no iOS.
-    // Redireciona para a App Store (instala/abrir).
-    window.location.replace(appStore);
+    if (IOS_SCHEME) {
+      // Tenta abrir o app pelo scheme; se não abrir, cai na App Store
+      // iOS em WebView não aciona Universal Links; scheme é o caminho
+      var openTried = false;
+      // iframe "oculto" é o método mais consistente para scheme no iOS
+      var iframe = document.createElement("iframe");
+      iframe.style.display = "none";
+      iframe.src = IOS_SCHEME; // ex.: "gestran://open"
+      document.body.appendChild(iframe);
+      openTried = true;
+      setTimeout(function(){ fallback(APPSTORE); }, 1200);
+    } else {
+      // Sem deep link oficial do iOS -> App Store
+      window.location.replace(APPSTORE);
+    }
   } else {
-    // Desktop ou outros: manda para página informativa ou para as lojas
-    window.location.replace(playStore);
+    // Desktop/outros: manda para Play Store como página informativa
+    window.location.replace(PLAY);
   }
 })();
 </script>
-<body>
-Redirecionando…
-</body>
+<body>Redirecionando…</body>
 </html>
